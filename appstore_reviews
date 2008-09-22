@@ -1,0 +1,123 @@
+#!/usr/bin/env ruby
+
+#
+# appstore_reviews
+#
+#  Fetch iTunes App Store reviews for each application, across all country stores
+#   -- reads rating, author, subject and review body
+#
+# Notes
+#  Derived from Erica Sadun's scraper: http://blogs.oreilly.com/iphone/2008/08/scraping-appstore-reviews.html
+#  Apple's XML is purely layout-based, without much semantic relation to reviews, so the CSS paths below
+#   are brittle.
+#
+# Jeremy Wohl -- http://igmus.org/
+#
+
+require 'hpricot'
+
+software = {
+  # http://phobos.apple.com/WebObjects/MZStore.woa/wa/viewSoftware?id=289923007&mt=8
+  'Domain Scout' => 289923007,
+}
+
+stores = {
+  'United States' => 143441,
+  'Argentina' => 143505,
+  'Australia' => 143460,
+  'Belgium' => 143446,
+  'Brazil' => 143503,
+  'Canada' => 143455,
+  'Chile' => 143483,
+  'China' => 143465,
+  'Colombia' => 143501,
+  'Costa Rica' => 143495,
+  'Croatia' => 143494,
+  'Czech Republic' => 143489,
+  'Denmark' => 143458,
+  'Deutschland' => 143443,
+  'El Salvador' => 143506,
+  'Espana' => 143454,
+  'Finland' => 143447,
+  'France' => 143442,
+  'Greece' => 143448,
+  'Guatemala' => 143504,
+  'Hong Kong' => 143463,
+  'Hungary' => 143482,
+  'India' => 143467,
+  'Indonesia' => 143476,
+  'Ireland' => 143449,
+  'Israel' => 143491,
+  'Italia' => 143450,
+  'Korea' => 143466,
+  'Kuwait' => 143493,
+  'Lebanon' => 143497,
+  'Luxembourg' => 143451,
+  'Malaysia' => 143473,
+  'Mexico' => 143468,
+  'Nederland' => 143452,
+  'New Zealand' => 143461,
+  'Norway' => 143457,
+  'Osterreich' => 143445,
+  'Pakistan' => 143477,
+  'Panama' => 143485,
+  'Peru' => 143507,
+  'Phillipines' => 143474,
+  'Poland' => 143478,
+  'Portugal' => 143453,
+  'Qatar' => 143498,
+  'Romania' => 143487,
+  'Russia' => 143469,
+  'Saudi Arabia' => 143479,
+  'Schweitz/Suisse' => 143459,
+  'Singapore' => 143464,
+  'Slovakia' => 143496,
+  'Slovenia' => 143499,
+  'South Africa' => 143472,
+  'Sri Lanka' => 143486,
+  'Sweden' => 143456,
+  'Taiwan' => 143470,
+  'Thailand' => 143475,
+  'Turkey' => 143480,
+  'United Arab Emirates' => 143481,
+  'United Kingdom' => 143444,
+  'Venezuela' => 143502,
+  'Vietnam' => 143471,
+  'Japan' => 143462,
+}
+
+def reviews(software_id, store_id)
+  result = []
+
+  # TODO: parameterize type=Purple+Software
+  cmd = sprintf(%{curl -s -A "iTunes/4.2 (Macintosh; U; PPC Mac OS X 10.2" -H "X-Apple-Store-Front: %s-1" } <<
+                %{'http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
+                %{pageNumber=0&sortOrdering=2&type=Purple+Software' | gunzip | xmllint --format -},
+                store_id,
+                software_id)
+
+  doc = Hpricot.XML(`#{cmd}`)
+
+  doc.search("Document > View > ScrollView > VBoxView > View > MatrixView > VBoxView:nth(0) > VBoxView > VBoxView").each do |e|
+    rating = e.inner_html.match(/alt="(\d+ star(s?))"/)[1]
+    text   = (e/:SetFontStyle)[0..2].map { |x| x.inner_text.strip }
+
+    s = "#{rating}, \"#{text[0]}\", #{text[1]}\n"
+    s << text[2] << "\n"
+    result << s
+  end
+
+  result
+end
+
+software.keys.sort.each do |software_key|
+  puts "== App: #{software_key}"
+
+  stores.keys.sort.each do |store_key|
+    r = reviews(software[software_key], stores[store_key])
+    if r.any?
+      puts "=== Store: #{store_key}"
+      puts r.join("--\n")
+    end
+  end
+end
