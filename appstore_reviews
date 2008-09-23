@@ -17,6 +17,7 @@
 require 'rubygems'
 require 'hpricot'
 
+# MODIFY THIS HASH WITH YOUR APP SET (grab the itunes store urls & pull the id params)
 software = {
   # http://phobos.apple.com/WebObjects/MZStore.woa/wa/viewSoftware?id=289923007&mt=8
   'Domain Scout' => 289923007,
@@ -87,8 +88,9 @@ stores = {
   'Japan' => 143462,
 }
 
-def reviews(software_id, store_id)
-  result = []
+# return a rating/subject/author/body hash
+def fetch_reviews(software_id, store_id)
+  reviews = []
 
   # TODO: parameterize type=Purple+Software
   cmd = sprintf(%{curl -s -A "iTunes/4.2 (Macintosh; U; PPC Mac OS X 10.2" -H "X-Apple-Store-Front: %s-1" } <<
@@ -100,25 +102,33 @@ def reviews(software_id, store_id)
   doc = Hpricot.XML(`#{cmd}`)
 
   doc.search("Document > View > ScrollView > VBoxView > View > MatrixView > VBoxView:nth(0) > VBoxView > VBoxView").each do |e|
-    rating = e.inner_html.match(/alt="(\d+ star(s?))"/)[1]
-    text   = (e/:SetFontStyle)[0..2].map { |x| x.inner_text.strip }
-
-    s = "#{rating}, \"#{text[0]}\", #{text[1]}\n"
-    s << text[2] << "\n"
-    result << s
+    review = {}
+    
+    review[:rating] = e.inner_html.match(/alt="(\d+) star(s?)"/)[1].to_i
+    review[:subject], review[:author], review[:body] = (e/:SetFontStyle)[0..2].map { |x| x.inner_text.strip }
+    review[:author] = review[:author][/by (.*)/, 1]
+    
+    reviews << review
   end
 
-  result
+  reviews
 end
 
+# a simple command-line presentation
 software.keys.sort.each do |software_key|
   puts "== App: #{software_key}"
 
   stores.keys.sort.each do |store_key|
-    r = reviews(software[software_key], stores[store_key])
-    if r.any?
+    reviews = fetch_reviews(software[software_key], stores[store_key])
+
+    if reviews.any?
       puts "=== Store: #{store_key}"
-      puts r.join("--\n")
+      
+      reviews.each_with_index do |review, index|
+        puts sprintf(%{%s %s, "%s", by %s}, review[:rating], review[:rating] > 1 ? "stars" : "star", review[:subject], review[:author])
+        puts review[:body]
+        puts "--\n" if index + 1 < reviews.size
+      end
     end
   end
 end
