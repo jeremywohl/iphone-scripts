@@ -11,7 +11,10 @@
 #  Apple's XML is purely layout-based, without much semantic relation to reviews, so the CSS paths below
 #   are brittle.
 #
-# Jeremy Wohl -- http://igmus.org/
+# Jeremy Wohl
+#   relevant post: http://igmus.org/2008/09/fetching-app-store-reviews
+#
+# TODO: spider additional review pages
 #
 
 require 'rubygems'
