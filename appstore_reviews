@@ -107,8 +107,19 @@ def fetch_reviews(software_id, store_id)
   doc.search("Document > View > ScrollView > VBoxView > View > MatrixView > VBoxView:nth(0) > VBoxView > VBoxView").each do |e|
     review = {}
     
+    strings = (e/:SetFontStyle)
+
+    case strings.size
+    when 8  # no "x customers found this review helpful" verbiage
+      subset = strings[0..2]
+    when 9  # yup
+      subset = [ strings[0] ] + strings[2..3]
+    else
+      puts "warning: not sure about the structure here"
+    end
+
     review[:rating] = e.inner_html.match(/alt="(\d+) star(s?)"/)[1].to_i
-    review[:subject], review[:author], review[:body] = (e/:SetFontStyle)[0..2].map { |x| x.inner_text.strip }
+    review[:subject], review[:author], review[:body] = subset.map! { |x| x.inner_text.strip }
     review[:author] = review[:author][/by (.*)/, 1]
     
     reviews << review
