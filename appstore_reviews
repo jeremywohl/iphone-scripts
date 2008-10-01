@@ -3,7 +3,7 @@
 #
 # appstore_reviews
 #
-#  Fetch iTunes App Store reviews for each application, across all country stores
+#  Fetch iTunes App Store reviews for each application, across all country stores, with translation
 #   -- reads rating, author, subject and review body
 #
 # Notes
@@ -19,6 +19,10 @@
 
 require 'rubygems'
 require 'hpricot'
+require 'google_translate'
+
+# MODIFY YOU'RE NATIVE LANGUAGE
+NATIVE_LANGUAGE = 'en'
 
 # MODIFY THIS HASH WITH YOUR APP SET (grab the itunes store urls & pull the id params)
 software = {
@@ -26,80 +30,82 @@ software = {
   'Domain Scout' => 289923007,
 }
 
-stores = {
-  'United States' => 143441,
-  'Argentina' => 143505,
-  'Australia' => 143460,
-  'Belgium' => 143446,
-  'Brazil' => 143503,
-  'Canada' => 143455,
-  'Chile' => 143483,
-  'China' => 143465,
-  'Colombia' => 143501,
-  'Costa Rica' => 143495,
-  'Croatia' => 143494,
-  'Czech Republic' => 143489,
-  'Denmark' => 143458,
-  'Deutschland' => 143443,
-  'El Salvador' => 143506,
-  'Espana' => 143454,
-  'Finland' => 143447,
-  'France' => 143442,
-  'Greece' => 143448,
-  'Guatemala' => 143504,
-  'Hong Kong' => 143463,
-  'Hungary' => 143482,
-  'India' => 143467,
-  'Indonesia' => 143476,
-  'Ireland' => 143449,
-  'Israel' => 143491,
-  'Italia' => 143450,
-  'Korea' => 143466,
-  'Kuwait' => 143493,
-  'Lebanon' => 143497,
-  'Luxembourg' => 143451,
-  'Malaysia' => 143473,
-  'Mexico' => 143468,
-  'Nederland' => 143452,
-  'New Zealand' => 143461,
-  'Norway' => 143457,
-  'Osterreich' => 143445,
-  'Pakistan' => 143477,
-  'Panama' => 143485,
-  'Peru' => 143507,
-  'Phillipines' => 143474,
-  'Poland' => 143478,
-  'Portugal' => 143453,
-  'Qatar' => 143498,
-  'Romania' => 143487,
-  'Russia' => 143469,
-  'Saudi Arabia' => 143479,
-  'Schweitz/Suisse' => 143459,
-  'Singapore' => 143464,
-  'Slovakia' => 143496,
-  'Slovenia' => 143499,
-  'South Africa' => 143472,
-  'Sri Lanka' => 143486,
-  'Sweden' => 143456,
-  'Taiwan' => 143470,
-  'Thailand' => 143475,
-  'Turkey' => 143480,
-  'United Arab Emirates' => 143481,
-  'United Kingdom' => 143444,
-  'Venezuela' => 143502,
-  'Vietnam' => 143471,
-  'Japan' => 143462,
-}
+stores = [
+  { :name => 'United States',        :id => 143441, :language => 'en'    },
+  { :name => 'Argentina',            :id => 143505, :language => 'es'    },
+  { :name => 'Australia',            :id => 143460, :language => 'en'    },
+  { :name => 'Belgium',              :id => 143446, :language => 'nl'    },
+  { :name => 'Brazil',               :id => 143503, :language => 'pt'    },
+  { :name => 'Canada',               :id => 143455, :language => 'en'    },
+  { :name => 'Chile',                :id => 143483, :language => 'es'    },
+  { :name => 'China',                :id => 143465, :language => 'zh-CN' },
+  { :name => 'Colombia',             :id => 143501, :language => 'es'    },
+  { :name => 'Costa Rica',           :id => 143495, :language => 'es'    },
+  { :name => 'Croatia',              :id => 143494, :language => 'hr'    },
+  { :name => 'Czech Republic',       :id => 143489, :language => 'cs'    },
+  { :name => 'Denmark',              :id => 143458, :language => 'da'    },
+  { :name => 'Deutschland',          :id => 143443, :language => 'de'    },
+  { :name => 'El Salvador',          :id => 143506, :language => 'es'    },
+  { :name => 'Espana',               :id => 143454, :language => 'es'    },
+  { :name => 'Finland',              :id => 143447, :language => 'fi'    },
+  { :name => 'France',               :id => 143442, :language => 'fr'    },
+  { :name => 'Greece',               :id => 143448, :language => 'el'    },
+  { :name => 'Guatemala',            :id => 143504, :language => 'es'    },
+  { :name => 'Hong Kong',            :id => 143463, :language => 'zh-TW' },
+  { :name => 'Hungary',              :id => 143482, :language => ''      },
+  { :name => 'India',                :id => 143467, :language => ''      },
+  { :name => 'Indonesia',            :id => 143476, :language => ''      },
+  { :name => 'Ireland',              :id => 143449, :language => ''      },
+  { :name => 'Israel',               :id => 143491, :language => ''      },
+  { :name => 'Italia',               :id => 143450, :language => 'it'    },
+  { :name => 'Korea',                :id => 143466, :language => 'ko'    },
+  { :name => 'Kuwait',               :id => 143493, :language => 'ar'    },
+  { :name => 'Lebanon',              :id => 143497, :language => 'ar'    },
+  { :name => 'Luxembourg',           :id => 143451, :language => 'de'    },
+  { :name => 'Malaysia',             :id => 143473, :language => ''      },
+  { :name => 'Mexico',               :id => 143468, :language => 'es'    },
+  { :name => 'Nederland',            :id => 143452, :language => 'nl'    },
+  { :name => 'New Zealand',          :id => 143461, :language => 'en'    },
+  { :name => 'Norway',               :id => 143457, :language => 'no'    },
+  { :name => 'Osterreich',           :id => 143445, :language => 'de'    },
+  { :name => 'Pakistan',             :id => 143477, :language => ''      },
+  { :name => 'Panama',               :id => 143485, :language => 'es'    },
+  { :name => 'Peru',                 :id => 143507, :language => 'es'    },
+  { :name => 'Phillipines',          :id => 143474, :language => ''      },
+  { :name => 'Poland',               :id => 143478, :language => 'pl'    },
+  { :name => 'Portugal',             :id => 143453, :language => 'pt'    },
+  { :name => 'Qatar',                :id => 143498, :language => 'ar'    },
+  { :name => 'Romania',              :id => 143487, :language => 'ro'    },
+  { :name => 'Russia',               :id => 143469, :language => 'ru'    },
+  { :name => 'Saudi Arabia',         :id => 143479, :language => 'ar'    },
+  { :name => 'Schweitz/Suisse',      :id => 143459, :language => 'de'    },
+  { :name => 'Singapore',            :id => 143464, :language => ''      },
+  { :name => 'Slovakia',             :id => 143496, :language => ''      },
+  { :name => 'Slovenia',             :id => 143499, :language => ''      },
+  { :name => 'South Africa',         :id => 143472, :language => 'en'    },
+  { :name => 'Sri Lanka',            :id => 143486, :language => ''      },
+  { :name => 'Sweden',               :id => 143456, :language => ''      },
+  { :name => 'Taiwan',               :id => 143470, :language => 'zh-TW' },
+  { :name => 'Thailand',             :id => 143475, :language => ''      },
+  { :name => 'Turkey',               :id => 143480, :language => ''      },
+  { :name => 'United Arab Emirates', :id => 143481, :language => ''      },
+  { :name => 'United Kingdom',       :id => 143444, :language => 'en'    },
+  { :name => 'Venezuela',            :id => 143502, :language => 'es'    },
+  { :name => 'Vietnam',              :id => 143471, :language => ''      },
+  { :name => 'Japan',                :id => 143462, :language => 'ja'    },
+]
 
 # return a rating/subject/author/body hash
-def fetch_reviews(software_id, store_id)
+def fetch_reviews(software_id, store)
   reviews = []
+  
+  tr = Google::Translate.new
 
   # TODO: parameterize type=Purple+Software
   cmd = sprintf(%{curl -s -A "iTunes/4.2 (Macintosh; U; PPC Mac OS X 10.2" -H "X-Apple-Store-Front: %s-1" } <<
                 %{'http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
                 %{pageNumber=0&sortOrdering=2&type=Purple+Software' | gunzip | xmllint --format -},
-                store_id,
+                store[:id],
                 software_id)
 
   doc = Hpricot.XML(`#{cmd}`)
@@ -122,6 +128,11 @@ def fetch_reviews(software_id, store_id)
     review[:subject], review[:author], review[:body] = subset.map! { |x| x.inner_text.strip }
     review[:author] = review[:author][/by (.*)/, 1]
     
+    if ! store[:language].empty? && store[:language] != NATIVE_LANGUAGE
+      review[:subject] = tr.translate :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:subject]
+      review[:body]    = tr.translate :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:body]
+    end
+    
     reviews << review
   end
 
@@ -132,11 +143,11 @@ end
 software.keys.sort.each do |software_key|
   puts "== App: #{software_key}"
 
-  stores.keys.sort.each do |store_key|
-    reviews = fetch_reviews(software[software_key], stores[store_key])
+  stores.sort_by { |a| a[:name] }.each do |store|
+    reviews = fetch_reviews(software[software_key], store)
 
     if reviews.any?
-      puts "=== Store: #{store_key}"
+      puts "=== Store: #{store[:name]}"
       
       reviews.each_with_index do |review, index|
         puts sprintf(%{%s %s, "%s", by %s}, review[:rating], review[:rating] > 1 ? "stars" : "star", review[:subject], review[:author])
