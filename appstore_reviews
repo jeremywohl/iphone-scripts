@@ -21,7 +21,7 @@ require 'rubygems'
 require 'hpricot'
 require 'google_translate'
 
-# MODIFY YOU'RE NATIVE LANGUAGE
+# MODIFY YOUR NATIVE LANGUAGE
 NATIVE_LANGUAGE = 'en'
 
 # MODIFY THIS HASH WITH YOUR APP SET (grab the itunes store urls & pull the id params)
