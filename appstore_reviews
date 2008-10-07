@@ -19,7 +19,7 @@
 
 require 'rubygems'
 require 'hpricot'
-require 'google_translate'
+require 'mechanize'
 
 # MODIFY YOUR NATIVE LANGUAGE
 NATIVE_LANGUAGE = 'en'
@@ -95,12 +95,17 @@ stores = [
   { :name => 'Japan',                :id => 143462, :language => 'ja'    },
 ]
 
+TRANSLATE_URL = "http://translate.google.com/translate_t"
+
+def translate(opts)
+  result = WWW::Mechanize.new.post(TRANSLATE_URL, :sl => opts[:from], :tl => opts[:to], :ie => 'UTF-8', :text => opts[:text])
+  result.search('#result_box').inner_html
+end
+
 # return a rating/subject/author/body hash
 def fetch_reviews(software_id, store)
   reviews = []
   
-  tr = Google::Translate.new
-
   # TODO: parameterize type=Purple+Software
   cmd = sprintf(%{curl -s -A "iTunes/4.2 (Macintosh; U; PPC Mac OS X 10.2" -H "X-Apple-Store-Front: %s-1" } <<
                 %{'http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
@@ -124,13 +129,16 @@ def fetch_reviews(software_id, store)
       puts "warning: not sure about the structure here"
     end
 
-    review[:rating] = e.inner_html.match(/alt="(\d+) star(s?)"/)[1].to_i
-    review[:subject], review[:author], review[:body] = subset.map! { |x| x.inner_text.strip }
-    review[:author] = review[:author][/by (.*)/, 1]
+    # Note: Translate is sensitive to spaces around punctuation, so we make sure br's connote space.
+    review[:rating]  = e.inner_html.match(/alt="(\d+) star(s?)"/)[1].to_i
+    review[:subject] = subset[0].inner_text.strip
+    review[:author]  = subset[1].inner_text.strip[/by (.*)/, 1]
+    review[:body]    = subset.last.inner_html.gsub("<br />", "\n").strip
     
     if ! store[:language].empty? && store[:language] != NATIVE_LANGUAGE
-      review[:subject] = tr.translate :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:subject]
-      review[:body]    = tr.translate :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:body]
+      review[:subject] = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:subject] )
+      review[:body]    = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:body] )
+      review[:body].gsub!("<br />", "\n")  # br's reintroduced by Translate
     end
     
     reviews << review
