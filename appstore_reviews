@@ -95,6 +95,8 @@ stores = [
   { :name => 'Japan',                :id => 143462, :language => 'ja'    },
 ]
 
+DEBUG = false
+
 TRANSLATE_URL = "http://translate.google.com/translate_t"
 
 def translate(opts)
@@ -109,11 +111,18 @@ def fetch_reviews(software_id, store)
   # TODO: parameterize type=Purple+Software
   cmd = sprintf(%{curl -s -A "iTunes/4.2 (Macintosh; U; PPC Mac OS X 10.2" -H "X-Apple-Store-Front: %s-1" } <<
                 %{'http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
-                %{pageNumber=0&sortOrdering=2&type=Purple+Software' | gunzip | xmllint --format -},
+                %{pageNumber=0&sortOrdering=2&type=Purple+Software' | gunzip | } <<
+                %{xmllint --format --recover - 2>null},
                 store[:id],
                 software_id)
 
-  doc = Hpricot.XML(`#{cmd}`)
+  rawxml = `#{cmd}`
+  
+  if defined?(DEBUG) && DEBUG == true
+    open("appreview.#{software_id}.#{store[:id]}.xml", 'w') { |f| f.write(rawxml) }
+  end
+  
+  doc = Hpricot.XML(rawxml)
 
   doc.search("Document > View > ScrollView > VBoxView > View > MatrixView > VBoxView:nth(0) > VBoxView > VBoxView").each do |e|
     review = {}
