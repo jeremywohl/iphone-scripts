@@ -111,8 +111,7 @@ def fetch_reviews(software_id, store)
   # TODO: parameterize type=Purple+Software
   cmd = sprintf(%{curl -s -A "iTunes/4.2 (Macintosh; U; PPC Mac OS X 10.2" -H "X-Apple-Store-Front: %s-1" } <<
                 %{'http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
-                %{pageNumber=0&sortOrdering=2&type=Purple+Software' | gunzip | } <<
-                %{xmllint --format --recover - 2>null},
+                %{pageNumber=0&sortOrdering=2&type=Purple+Software' | xmllint --format --recover - 2>null},
                 store[:id],
                 software_id)
 
@@ -128,21 +127,15 @@ def fetch_reviews(software_id, store)
     review = {}
     
     strings = (e/:SetFontStyle)
-
-    case strings.size
-    when 8  # no "x customers found this review helpful" verbiage
-      subset = strings[0..2]
-    when 9  # yup
-      subset = [ strings[0] ] + strings[2..3]
-    else
-      puts "warning: not sure about the structure here"
-    end
+    meta    = strings[2].inner_text.split(/\n/).map { |x| x.strip }
 
     # Note: Translate is sensitive to spaces around punctuation, so we make sure br's connote space.
     review[:rating]  = e.inner_html.match(/alt="(\d+) star(s?)"/)[1].to_i
-    review[:subject] = subset[0].inner_text.strip
-    review[:author]  = subset[1].inner_text.strip[/by (.*)/, 1]
-    review[:body]    = subset.last.inner_html.gsub("<br />", "\n").strip
+    review[:author]  = meta[3]
+    review[:version] = meta[7][/Version (.*)/, 1]
+    review[:date]    = meta[10]
+    review[:subject] = strings[0].inner_text.strip
+    review[:body]    = strings[3].inner_html.gsub("<br />", "\n").strip
     
     if ! store[:language].empty? && store[:language] != NATIVE_LANGUAGE
       review[:subject] = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:subject] )
@@ -167,7 +160,9 @@ software.keys.sort.each do |software_key|
       puts "=== Store: #{store[:name]}"
       
       reviews.each_with_index do |review, index|
-        puts sprintf(%{%s %s, "%s", by %s}, review[:rating], review[:rating] > 1 ? "stars" : "star", review[:subject], review[:author])
+        puts sprintf(%{%s %s, "%s", by %s, for version %s, on %s},
+          review[:rating], review[:rating] > 1 ? "stars" : "star", review[:subject],
+          review[:author], review[:version], review[:date])
         puts review[:body]
         puts "--\n" if index + 1 < reviews.size
       end
