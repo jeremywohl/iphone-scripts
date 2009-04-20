@@ -78,7 +78,7 @@ stores = [
   { :name => 'Romania',              :id => 143487, :language => 'ro'    },
   { :name => 'Russia',               :id => 143469, :language => 'ru'    },
   { :name => 'Saudi Arabia',         :id => 143479, :language => 'ar'    },
-  { :name => 'Schweitz/Suisse',      :id => 143459, :language => 'de'    },
+  { :name => 'Schweiz/Suisse',       :id => 143459, :language => 'auto'  },
   { :name => 'Singapore',            :id => 143464, :language => ''      },
   { :name => 'Slovakia',             :id => 143496, :language => ''      },
   { :name => 'Slovenia',             :id => 143499, :language => ''      },
@@ -93,6 +93,23 @@ stores = [
   { :name => 'Venezuela',            :id => 143502, :language => 'es'    },
   { :name => 'Vietnam',              :id => 143471, :language => ''      },
   { :name => 'Japan',                :id => 143462, :language => 'ja'    },
+
+  # stores added April 1, 2009
+  { :name => 'Dominican Republic',   :id => 143508, :language => 'es'    },
+  { :name => 'Ecuador',              :id => 143509, :language => 'es'    },
+  { :name => 'Egypt',                :id => 143516, :language => ''      },
+  { :name => 'Estonia',              :id => 143518, :language => 'et'    },
+  { :name => 'Honduras',             :id => 143510, :language => 'es'    },
+  { :name => 'Jamaica',              :id => 143511, :language => ''      },
+  { :name => 'Kazakhstan',           :id => 143517, :language => ''      },
+  { :name => 'Latvia',               :id => 143519, :language => 'lv'    },
+  { :name => 'Lithuania',            :id => 143520, :language => 'lt'    },
+  { :name => 'Macau',                :id => 143515, :language => ''      },
+  { :name => 'Malta',                :id => 143521, :language => 'mt'    },
+  { :name => 'Moldova',              :id => 143523, :language => ''      },
+  { :name => 'Nicaragua',            :id => 143512, :language => 'es'    },
+  { :name => 'Paraguay',             :id => 143513, :language => 'es'    },
+  { :name => 'Uruguay',              :id => 143514, :language => 'es'    },
 ]
 
 DEBUG = false
