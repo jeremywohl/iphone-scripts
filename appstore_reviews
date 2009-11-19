@@ -114,11 +114,23 @@ stores = [
 
 DEBUG = false
 
-TRANSLATE_URL = "http://translate.google.com/translate_t"
+TRANSLATE_URL = "http://translate.google.com"
 
 def translate(opts)
   result = WWW::Mechanize.new.post(TRANSLATE_URL, :sl => opts[:from], :tl => opts[:to], :ie => 'UTF-8', :text => opts[:text])
-  result.search('#result_box').inner_html
+
+  begin
+    return result.search('input').to_a.select { |elem| elem['name'] == 'gtrans' }.first.attributes['value']
+  rescue => e
+    if defined?(DEBUG) && DEBUG == true
+      puts '-----------'
+      puts 'translation failed on:'
+      puts opts[:text]
+      puts '-----------'
+    end
+
+    return opts[:text]
+  end
 end
 
 # return a rating/subject/author/body hash
@@ -157,7 +169,7 @@ def fetch_reviews(software_id, store)
     if ! store[:language].empty? && store[:language] != NATIVE_LANGUAGE
       review[:subject] = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:subject] )
       review[:body]    = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:body] )
-      review[:body].gsub!("<br />", "\n")  # br's reintroduced by Translate
+      review[:body].gsub!("<br>", "\n")  # br's reintroduced by Translate
     end
     
     reviews << review
