@@ -161,7 +161,7 @@ def fetch_reviews(software_id, store)
     # Note: Translate is sensitive to spaces around punctuation, so we make sure br's connote space.
     review[:rating]  = e.inner_html.match(/alt="(\d+) star(s?)"/)[1].to_i
     review[:author]  = meta[3]
-    review[:version] = meta[7][/Version (.*)/, 1]
+    review[:version] = meta[7][/Version (.*)/, 1] unless meta[7].nil?
     review[:date]    = meta[10]
     review[:subject] = strings[0].inner_text.strip
     review[:body]    = strings[3].inner_html.gsub("<br />", "\n").strip
