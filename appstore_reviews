@@ -19,7 +19,7 @@
 
 require 'rubygems'
 require 'hpricot'
-require 'mechanize'
+require 'httparty'
 
 # MODIFY YOUR NATIVE LANGUAGE
 NATIVE_LANGUAGE = 'en'
@@ -52,7 +52,7 @@ stores = [
   { :name => 'Greece',               :id => 143448, :language => 'el'    },
   { :name => 'Guatemala',            :id => 143504, :language => 'es'    },
   { :name => 'Hong Kong',            :id => 143463, :language => 'zh-TW' },
-  { :name => 'Hungary',              :id => 143482, :language => ''      },
+  { :name => 'Hungary',              :id => 143482, :language => 'hu'    },
   { :name => 'India',                :id => 143467, :language => ''      },
   { :name => 'Indonesia',            :id => 143476, :language => ''      },
   { :name => 'Ireland',              :id => 143449, :language => ''      },
@@ -84,14 +84,14 @@ stores = [
   { :name => 'Slovenia',             :id => 143499, :language => ''      },
   { :name => 'South Africa',         :id => 143472, :language => 'en'    },
   { :name => 'Sri Lanka',            :id => 143486, :language => ''      },
-  { :name => 'Sweden',               :id => 143456, :language => ''      },
+  { :name => 'Sweden',               :id => 143456, :language => 'sv'    },
   { :name => 'Taiwan',               :id => 143470, :language => 'zh-TW' },
-  { :name => 'Thailand',             :id => 143475, :language => ''      },
-  { :name => 'Turkey',               :id => 143480, :language => ''      },
+  { :name => 'Thailand',             :id => 143475, :language => 'th'    },
+  { :name => 'Turkey',               :id => 143480, :language => 'tr'    },
   { :name => 'United Arab Emirates', :id => 143481, :language => ''      },
   { :name => 'United Kingdom',       :id => 143444, :language => 'en'    },
   { :name => 'Venezuela',            :id => 143502, :language => 'es'    },
-  { :name => 'Vietnam',              :id => 143471, :language => ''      },
+  { :name => 'Vietnam',              :id => 143471, :language => 'vi'    },
   { :name => 'Japan',                :id => 143462, :language => 'ja'    },
 
   # stores added April 1, 2009
@@ -114,23 +114,16 @@ stores = [
 
 DEBUG = false
 
-TRANSLATE_URL = "http://translate.google.com"
+TRANSLATE_URL = "http://ajax.googleapis.com/ajax/services/language/translate?"
 
 def translate(opts)
-  result = Mechanize.new.post(TRANSLATE_URL, :sl => opts[:from], :tl => opts[:to], :ie => 'UTF-8', :text => opts[:text])
+  from = opts[:from] == 'auto' ? '' : opts[:from]  # replace 'auto' with blank per Translate API
+  to   = opts[:to]
 
-  begin
-    return result.search('input').to_a.select { |elem| elem['name'] == 'gtrans' }.first.attributes['value']
-  rescue => e
-    if defined?(DEBUG) && DEBUG == true
-      puts '-----------'
-      puts 'translation failed on:'
-      puts opts[:text]
-      puts '-----------'
-    end
+  result = HTTParty.get(TRANSLATE_URL, :query => { :v => '1.0', :langpair => "#{from}|#{to}", :q => opts[:text] })
 
-    return opts[:text]
-  end
+  raise result['responseDetails'] if result['responseStatus'] != 200
+  return result['responseData']['translatedText']
 end
 
 # return a rating/subject/author/body hash
@@ -167,9 +160,14 @@ def fetch_reviews(software_id, store)
     review[:body]    = strings[3].inner_html.gsub("<br />", "\n").strip
     
     if ! store[:language].empty? && store[:language] != NATIVE_LANGUAGE
-      review[:subject] = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:subject] )
-      review[:body]    = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:body] )
-      review[:body].to_s.gsub!("<br>", "\n")  # br's reintroduced by Translate
+      begin
+        review[:subject] = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:subject] )
+        review[:body]    = translate( :from => store[:language], :to => NATIVE_LANGUAGE, :text => review[:body] )
+      rescue => e
+        if DEBUG
+          puts "** oops, cannot translate #{store[:name]}/#{store[:language]} => #{NATIVE_LANGUAGE}: #{e.message}"
+        end
+      end
     end
     
     reviews << review
