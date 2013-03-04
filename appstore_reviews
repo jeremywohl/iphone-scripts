@@ -116,6 +116,13 @@ DEBUG = false
 
 TRANSLATE_URL = "http://ajax.googleapis.com/ajax/services/language/translate?"
 
+$MAX_PAGES = 2
+
+# Accept input from command line to override default max pages
+if ARGV.count > 0 && Integer(ARGV[0]) > 0
+  $MAX_PAGES = Integer(ARGV[0])
+end
+
 def translate(opts)
   from = opts[:from] == 'auto' ? '' : opts[:from]  # replace 'auto' with blank per Translate API
   to   = opts[:to]
@@ -127,18 +134,19 @@ def translate(opts)
 end
 
 # return a rating/subject/author/body hash
-def fetch_reviews(software_id, store)
+def fetch_reviews(software_id, store, page)
+
   reviews = []
   
   # TODO: parameterize type=Purple+Software
   cmd = sprintf(%{curl -s -A "iTunes/9.2 (Macintosh; U; Mac OS X 10.6" -H "X-Apple-Store-Front: %s-1" } <<
-                %{'http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
-                %{pageNumber=0&sortOrdering=1&type=Purple+Software' | xmllint --format --recover - 2>/dev/null},
+                %{'https://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
+                %{pageNumber=#{page}&sortOrdering=1&type=Purple+Software' | xmllint --format --recover - 2>/dev/null},
                 store[:id],
                 software_id)
 
   rawxml = `#{cmd}`
-  
+ 
   if defined?(DEBUG) && DEBUG == true
     open("appreview.#{software_id}.#{store[:id]}.xml", 'w') { |f| f.write(rawxml) }
   end
@@ -181,18 +189,36 @@ software.keys.sort.each do |software_key|
   puts "== App: #{software_key}"
 
   stores.sort_by { |a| a[:name] }.each do |store|
-    reviews = fetch_reviews(software[software_key], store)
 
-    if reviews.any?
-      puts "=== Store: #{store[:name]}"
-      
-      reviews.each_with_index do |review, index|
-        puts sprintf(%{%s %s, "%s", by %s, for version %s, on %s},
-          review[:rating], review[:rating] > 1 ? "stars" : "star", review[:subject],
-          review[:author], review[:version], review[:date])
-        puts review[:body]
-        puts "--\n" if index + 1 < reviews.size
+    page = 0;
+
+    while page < $MAX_PAGES do
+      reviews = fetch_reviews(software[software_key], store, page)
+
+      if reviews.any?
+        puts "=== Store: #{store[:name]} (page #{page})"
+
+        reviews.each_with_index do |review, index|
+          puts sprintf(%{%s %s, "%s", by %s, for version %s, on %s},
+            review[:rating], review[:rating] > 1 ? "stars" : "star", review[:subject],
+            review[:author], review[:version], review[:date])
+          puts review[:body]
+          puts "--\n" if index + 1 < reviews.size
+        end
+      else
+        # no reviews on this page - stop checking for current store
+        break;
       end
+
+      page += 1
+
+      sleep 3 
+
+      puts "\n\n"
+
     end
+
+    puts "=== #{page} total pages found for #{store[:name]} store.\n"
+
   end
 end
