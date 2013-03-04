@@ -132,13 +132,13 @@ def fetch_reviews(software_id, store)
   
   # TODO: parameterize type=Purple+Software
   cmd = sprintf(%{curl -s -A "iTunes/9.2 (Macintosh; U; Mac OS X 10.6" -H "X-Apple-Store-Front: %s-1" } <<
-                %{'http://ax.phobos.apple.com.edgesuite.net/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
+                %{'https://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
                 %{pageNumber=0&sortOrdering=1&type=Purple+Software' | xmllint --format --recover - 2>/dev/null},
                 store[:id],
                 software_id)
 
   rawxml = `#{cmd}`
-  
+ 
   if defined?(DEBUG) && DEBUG == true
     open("appreview.#{software_id}.#{store[:id]}.xml", 'w') { |f| f.write(rawxml) }
   end
