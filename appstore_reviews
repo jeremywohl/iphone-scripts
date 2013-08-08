@@ -127,13 +127,13 @@ def translate(opts)
 end
 
 # return a rating/subject/author/body hash
-def fetch_reviews(software_id, store)
+def fetch_reviews(software_id, store, page_number)
   reviews = []
   
   # TODO: parameterize type=Purple+Software
   cmd = sprintf(%{curl -s -A "iTunes/9.2 (Macintosh; U; Mac OS X 10.6" -H "X-Apple-Store-Front: %s-1" } <<
                 %{'https://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%s&} <<
-                %{pageNumber=0&sortOrdering=1&type=Purple+Software' | xmllint --format --recover - 2>/dev/null},
+                %{pageNumber=#{page_number}&sortOrdering=1&type=Purple+Software' | xmllint --format --recover - 2>/dev/null},
                 store[:id],
                 software_id)
 
@@ -181,18 +181,23 @@ software.keys.sort.each do |software_key|
   puts "== App: #{software_key}"
 
   stores.sort_by { |a| a[:name] }.each do |store|
-    reviews = fetch_reviews(software[software_key], store)
+    page = 0
+    reviews = fetch_reviews(software[software_key], store, page)
 
-    if reviews.any?
+     if reviews.any?
       puts "=== Store: #{store[:name]}"
       
-      reviews.each_with_index do |review, index|
-        puts sprintf(%{%s %s, "%s", by %s, for version %s, on %s},
-          review[:rating], review[:rating] > 1 ? "stars" : "star", review[:subject],
-          review[:author], review[:version], review[:date])
-        puts review[:body]
-        puts "--\n" if index + 1 < reviews.size
-      end
+      begin
+        reviews.each_with_index do |review, index|
+          puts sprintf(%{%s %s, "%s", by %s, for version %s, on %s},
+            review[:rating], review[:rating] > 1 ? "stars" : "star", review[:subject],
+            review[:author], review[:version], review[:date])
+          puts review[:body]
+          puts "--\n" if index + 1 < reviews.size
+        end
+        page = page + 1
+        reviews = fetch_reviews(software[software_key], store, page)
+      end while !reviews.empty?
     end
   end
 end
